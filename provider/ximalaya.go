@@ -3,7 +3,6 @@ package provider
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -99,11 +98,12 @@ type (
 
 // NewXimalayaAlbum is
 func NewXimalayaAlbum(albumURL string) *XimalayaAlbum {
-	albumURL = strings.TrimRight(albumURL, "/")
-	tmpURL := strings.Split(albumURL, "/")
-	log.Debugf("trimed url: %s", tmpURL)
-	aid := tmpURL[len(tmpURL)-1]
-	log.Debugf("album id: %s", aid)
+	// albumURL = strings.TrimRight(albumURL, "/")
+	// tmpURL := strings.Split(albumURL, "/")
+	// log.Debugf("trimed url: %s", tmpURL)
+	// aid := tmpURL[len(tmpURL)-1]
+	// log.Debugf("album id: %s", aid)
+	aid := GetAlbumURLastPart(albumURL)
 
 	ximalaya := XimalayaAlbum{}
 

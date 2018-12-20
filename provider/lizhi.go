@@ -1,31 +1,34 @@
 package provider
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"time"
 
+	"github.com/asdine/storm"
 	"github.com/eduncan911/podcast"
 	"github.com/levigross/grequests"
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	lizhiUserAudioQuery = "http://www.lizhi.fm/api/user/audios/%s/%d"
-	lizhiUserInfoQuery  = "http://www.lizhi.fm/api/user/info/%s"
-	lizhiSingleURL      = "http://www.lizhi.fm/%s/%s"
-)
-
-var lizhiReqOptions = grequests.RequestOptions{
-	Headers: map[string]string{
-		"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-		"User-Agent":                "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:63.0) Gecko/20100101 Firefox/63.0",
-		"Host":                      "www.lizhi.fm",
-		"Upgrade-Insecure-Requests": "1",
-	},
-}
+var lizhiReqOptions = requestOptions("ww.lizhi.fm")
 
 type (
+	// LizhiTrack is
+	LizhiTrack struct {
+		ID               string `storm:"id"`
+		RID              string
+		Name             string
+		URL              string
+		Cover            string
+		Duration         int
+		CreateTime       int64 `json:"create_time"`
+		FixedHighPlayURL string
+		FixedLowPlayURL  string
+		AlbumName        string
+		AlbumID          string `storm:"index"`
+	}
+
 	// LizhiUser is
 	LizhiUser struct {
 		ID            string
@@ -37,35 +40,16 @@ type (
 		LastBuildDate time.Time
 		CdnAudioCover string
 		BandID        string
-		trackList     []struct {
-			ID               string
-			RID              string
-			Name             string
-			URL              string
-			Cover            string
-			Duration         int
-			CreateTime       int64 `json:"create_time"`
-			FixedHighPlayURL string
-			FixedLowPlayURL  string
-		}
+		trackList     []LizhiTrack
+		DB            *storm.DB
 	}
 
 	// LizhiUserResponse is
 	LizhiUserResponse struct {
 		Total  int
-		Audios []struct {
-			ID               string
-			RID              string
-			Name             string
-			URL              string
-			Cover            string
-			Duration         int
-			CreateTime       int64 `json:"create_time"`
-			FixedHighPlayURL string
-			FixedLowPlayURL  string
-		}
-		P    int
-		Size int
+		Audios []LizhiTrack
+		P      int
+		Size   int
 	}
 
 	// LizhiUserMetaInfoResponse is
@@ -79,40 +63,37 @@ type (
 			CreateTime int64
 			Band       string
 		}
-		User struct {
-			Name  string
-			Email string
-		}
 	}
 )
 
 // NewLizhiUser is
-func NewLizhiUser(albumURL string) *LizhiUser {
+func NewLizhiUser(albumURL string, db *storm.DB) *LizhiUser {
 	aid := GetAlbumURLastPart(albumURL)
-	lu := LizhiUser{ID: aid, Link: albumURL}
+	lu := LizhiUser{ID: aid, Link: albumURL, DB: db}
 
 	err := lu.fetchLizhiMeta()
 	if err != nil {
-		log.Fatal(err)
-	}
-	err = lu.fetchUserByID()
-	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err, 79)
 	}
 	return &lu
 }
 
-func (l *LizhiUser) fetchUserByID() error {
-	ret, err := grequests.Get(fmt.Sprintf(lizhiUserAudioQuery, l.ID, 1), &lizhiReqOptions)
+func (l *LizhiUser) fetchUserByID(pageNum int, fetchAll bool) error {
+	ret, err := grequests.Get(fmt.Sprintf(lizhiUserAudioQuery, l.ID, 1), lizhiReqOptions)
 	if err != nil {
-		log.Error(err)
+		log.Error(err, 87)
 		return err
 	}
 	var resp LizhiUserResponse
 	err = ret.JSON(&resp)
 	if err != nil {
-		log.Error(err)
+		log.Error(err, 93)
 		return err
+	}
+
+	if !fetchAll {
+		log.Info("only fetch latest items")
+		return nil
 	}
 
 	var count int
@@ -124,16 +105,16 @@ func (l *LizhiUser) fetchUserByID() error {
 		count = resp.Total/resp.Size + 1
 	}
 
-	for index := 1; index <= count; index++ {
-		ret, err := grequests.Get(fmt.Sprintf(lizhiUserAudioQuery, l.ID, index), &lizhiReqOptions)
+	for index := pageNum; index <= count; index++ {
+		ret, err := grequests.Get(fmt.Sprintf(lizhiUserAudioQuery, l.ID, index), lizhiReqOptions)
 		if err != nil {
-			log.Error(err)
+			log.Error(err, 114)
 			continue
 		}
 		var resp LizhiUserResponse
 		err = ret.JSON(&resp)
 		if err != nil {
-			log.Error(err)
+			log.Error(err, 120)
 			continue
 		}
 		log.Infof("parsing page %d", index)
@@ -146,16 +127,21 @@ func (l *LizhiUser) fetchUserByID() error {
 }
 
 func (l *LizhiUser) fetchLizhiMeta() error {
-	ret, err := grequests.Get(fmt.Sprintf(lizhiUserInfoQuery, l.ID), &lizhiReqOptions)
+	ret, err := grequests.Get(fmt.Sprintf(lizhiUserInfoQuery, l.ID), lizhiReqOptions)
 	if err != nil {
-		log.Error(err)
+		log.Error(err, 135)
 		return err
 	}
 
+	if ret.StatusCode != 200 {
+		return errors.New("page not found")
+	}
+
 	var metaInfo LizhiUserMetaInfoResponse
+
 	err = ret.JSON(&metaInfo)
 	if err != nil {
-		log.Error(err)
+		log.Error(err, 142)
 		return err
 	}
 
@@ -171,35 +157,40 @@ func (l *LizhiUser) fetchLizhiMeta() error {
 }
 
 // ProduceRSSFeed is
-func (l LizhiUser) ProduceRSSFeed() error {
+func (l LizhiUser) ProduceRSSFeed(pageNum int, fetchAll bool) error {
 	p := podcast.New(l.Name, l.Link, l.Desc, &l.PubDate, &l.LastBuildDate)
 	p.AddImage(l.CoverImgURL)
 
-	for _, track := range l.trackList {
-		pubDate := time.Unix(track.CreateTime/1000, 0)
-		item := podcast.Item{
-			Title:       track.Name,
-			PubDate:     &pubDate,
-			Description: track.Name,
-			Link:        fmt.Sprintf(lizhiSingleURL, l.BandID, track.ID),
-		}
-		item.AddImage(fmt.Sprintf("%s%s", l.CdnAudioCover, track.Cover))
-		item.AddDuration(int64(track.Duration))
-		item.AddEnclosure(track.URL, podcast.MP3, 0)
-
-		_, err := p.AddItem(item)
-		if err != nil {
-			log.Error(err, track)
-			continue
-		}
+	err := l.fetchUserByID(pageNum, fetchAll)
+	if err != nil {
+		log.Fatal(err, 164)
 	}
 
-	fp, _ := os.OpenFile(fmt.Sprintf("lizhi_%s.xml", l.ID), os.O_RDWR|os.O_CREATE, 0755)
-	defer fp.Close()
+	// for _, track := range l.trackList {
+	// 	pubDate := time.Unix(track.CreateTime/1000, 0)
+	// 	item := podcast.Item{
+	// 		Title:       track.Name,
+	// 		PubDate:     &pubDate,
+	// 		Description: track.Name,
+	// 		Link:        fmt.Sprintf(lizhiSingleURL, l.BandID, track.ID),
+	// 	}
+	// 	item.AddImage(fmt.Sprintf("%s%s", l.CdnAudioCover, track.Cover))
+	// 	item.AddDuration(int64(track.Duration))
+	// 	item.AddEnclosure(track.URL, podcast.MP3, 0)
 
-	if err := p.Encode(fp); err != nil {
-		fmt.Println("error writing to stdout:", err.Error())
-	}
+	// 	_, err := p.AddItem(item)
+	// 	if err != nil {
+	// 		log.Error(err, track)
+	// 		continue
+	// 	}
+	// }
+
+	// fp, _ := os.OpenFile(fmt.Sprintf("lizhi_%s.xml", l.ID), os.O_RDWR|os.O_CREATE, 0755)
+	// defer fp.Close()
+
+	// if err := p.Encode(fp); err != nil {
+	// 	fmt.Println("error writing to stdout:", err.Error())
+	// }
 
 	return nil
 }

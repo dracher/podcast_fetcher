@@ -2,23 +2,28 @@ package main
 
 import (
 	"errors"
+	"log"
 	"net/url"
 	"os"
 	"time"
 
 	"github.com/asdine/storm"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"go.uber.org/zap"
 
-	"github.com/dracher/podcast_fetcher/provider"
+	"github.com/dracher/podcast_fetcher/platform"
 )
 
 var (
 	errURLEmpty = errors.New("url can't be empty")
+	logger      *zap.SugaredLogger
 )
 
 func init() {
-	log.SetLevel(log.DebugLevel)
+	log, _ := zap.NewProduction()
+	// log, _ := zap.NewDevelopment()
+	defer log.Sync()
+	logger = log.Sugar()
 }
 
 func parseURL(uri string) error {
@@ -29,9 +34,11 @@ func parseURL(uri string) error {
 func main() {
 	db, err := storm.Open("podcasts.db")
 	defer db.Close()
+	conn := platform.NewDB(db, logger)
 
 	app := cli.NewApp()
 	app.Name = "podcast_fetcher"
+	app.Usage = "convert china popular podcaster platform to general podcast format"
 	app.Version = "0.1.0"
 	app.Compiled = time.Now()
 	app.Author = "dracher"
@@ -56,9 +63,7 @@ func main() {
 				return parseURL(c.String("url"))
 			},
 			Action: func(c *cli.Context) error {
-				log.Info(c.Bool("all"))
-				xi := provider.NewXimalayaAlbum(c.String("url"), db)
-				return xi.ProduceRSSFeed(1, c.Bool("all"))
+				return platform.NewHimalaya(c.String("url"), c.Command.Name, logger, conn).Start()
 			},
 		},
 		cli.Command{
@@ -79,9 +84,7 @@ func main() {
 				return parseURL(c.String("url"))
 			},
 			Action: func(c *cli.Context) error {
-				log.Info(c.Bool("all"))
-				lz := provider.NewLizhiUser(c.String("url"), db)
-				return lz.ProduceRSSFeed(1, c.Bool("all"))
+				return nil
 			},
 		},
 	}

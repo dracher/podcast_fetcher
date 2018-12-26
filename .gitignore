@@ -1,3 +1,4 @@
 *.xml
 *.json
 podcasts.db
+cmd/debug

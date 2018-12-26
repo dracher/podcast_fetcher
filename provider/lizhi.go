@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/asdine/storm"
-	"github.com/eduncan911/podcast"
 	"github.com/levigross/grequests"
 	log "github.com/sirupsen/logrus"
 )
@@ -158,13 +157,17 @@ func (l *LizhiUser) fetchLizhiMeta() error {
 
 // ProduceRSSFeed is
 func (l LizhiUser) ProduceRSSFeed(pageNum int, fetchAll bool) error {
-	p := podcast.New(l.Name, l.Link, l.Desc, &l.PubDate, &l.LastBuildDate)
-	p.AddImage(l.CoverImgURL)
+	var res LizhiTrack
 
-	err := l.fetchUserByID(pageNum, fetchAll)
-	if err != nil {
-		log.Fatal(err, 164)
-	}
+	all := checkAlbumAlreadyFetched(res, l.DB, fetchAll)
+	log.Info(all)
+	// p := podcast.New(l.Name, l.Link, l.Desc, &l.PubDate, &l.LastBuildDate)
+	// p.AddImage(l.CoverImgURL)
+
+	// err := l.fetchUserByID(pageNum, fetchAll)
+	// if err != nil {
+	// 	log.Fatal(err, 164)
+	// }
 
 	// for _, track := range l.trackList {
 	// 	pubDate := time.Unix(track.CreateTime/1000, 0)

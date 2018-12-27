@@ -38,7 +38,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "podcast_fetcher"
 	app.Usage = "convert china popular podcaster platform to general podcast format"
-	app.Version = "0.1.0"
+	app.Version = "0.2.0"
 	app.Compiled = time.Now()
 	app.Author = "dracher"
 	app.Email = "dracher@gmail.com"

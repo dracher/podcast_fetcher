@@ -6,9 +6,9 @@ then can be imported into general podcast client/app.
 
 ## Current supported provider
 
-- [x] Ximalaya 喜马拉雅
-- [ ] Lizhi 荔枝 FM
-- [ ] 考拉 FM
-- [ ] 蜻蜓 FM
+-   [x] Ximalaya 喜马拉雅
+-   [x] Lizhi 荔枝 FM
+-   [ ] 考拉 FM
+-   [ ] 蜻蜓 FM
 
 ## Usage

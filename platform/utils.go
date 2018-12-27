@@ -43,7 +43,9 @@ func ProduceRSSFeed(pid string, db *DB, log *zap.SugaredLogger) {
 		&meta.PubDate,
 		&meta.LastBuildDate,
 	)
-	pd.AddCategory(meta.Category[0], []string{})
+	if len(meta.Category) != 0 {
+		pd.AddCategory(meta.Category[0], []string{})
+	}
 	pd.AddImage(meta.CoverImgURL)
 
 	for _, item := range items {
@@ -63,7 +65,7 @@ func ProduceRSSFeed(pid string, db *DB, log *zap.SugaredLogger) {
 		}
 	}
 
-	fp, _ := os.OpenFile(fmt.Sprintf("ximalaya_%s__%s.xml", meta.ID, meta.Title), os.O_RDWR|os.O_CREATE, 0755)
+	fp, _ := os.OpenFile(fmt.Sprintf("%s.xml", meta.ID), os.O_RDWR|os.O_CREATE, 0755)
 	defer fp.Close()
 	if err := pd.Encode(fp); err != nil {
 		fmt.Println("error writing to stdout:", err.Error())

@@ -1,6 +1,7 @@
 module github.com/dracher/podcast_fetcher
 
 require (
+	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/eduncan911/podcast v1.3.0
 	github.com/google/go-querystring v1.0.0 // indirect

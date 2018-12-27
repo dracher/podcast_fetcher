@@ -2,6 +2,7 @@ package platform
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/levigross/grequests"
@@ -9,13 +10,7 @@ import (
 )
 
 // Himalaya is
-type Himalaya struct {
-	meta     PodcastMeta
-	items    []PodcastItem
-	log      *zap.SugaredLogger
-	fetchAll bool
-	db       *DB
-}
+type Himalaya Podcast
 
 type himalayaPodcastTrack struct {
 	TrackID        int `storm:"id"`
@@ -174,8 +169,8 @@ func (h *Himalaya) fetchTrackList(pageNum int) error {
 			ImageURL:    fmt.Sprintf("http:%s", track.TrackCoverPath),
 			Duration:    track.Duration,
 			Src:         track.Src,
-			ID:          track.TrackID,
-			AlbumID:     track.AlbumID,
+			ID:          strconv.Itoa(track.TrackID),
+			AlbumID:     strconv.Itoa(track.AlbumID),
 			AlbumName:   track.AlbumName,
 			PubDate:     pubDate,
 			Description: desc,

@@ -3,10 +3,10 @@ package platform
 import "github.com/levigross/grequests"
 
 const (
-	litchiUserAudioQuery = "http://www.lizhi.fm/api/user/audios/%s/%d"
-	litchiUserInfoQuery  = "http://www.lizhi.fm/api/user/info/%s"
-	litchiSingleURL      = "http://www.lizhi.fm/%s/%s"
-	litchiDomain         = "ww.lizhi.fm"
+	litchiPodcastQuery     = "http://www.lizhi.fm/api/user/audios/%s/%d"
+	litchiPodcastMetaQuery = "http://www.lizhi.fm/api/user/info/%s"
+	litchiTrackInfoQuery   = "http://www.lizhi.fm/%s/%s"
+	litchiDomain           = "ww.lizhi.fm"
 
 	himalayaPodcastMetaQuery = "https://www.ximalaya.com/revision/album?albumId=%s"
 	himalayaPodcastQuery     = "https://www.ximalaya.com/revision/play/album?albumId=%s&pageNum=%d"

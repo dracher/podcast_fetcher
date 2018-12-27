@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"net/url"
 	"os"
 	"time"
@@ -84,13 +83,13 @@ func main() {
 				return parseURL(c.String("url"))
 			},
 			Action: func(c *cli.Context) error {
-				return nil
+				return platform.NewLitchi(c.String("url"), c.Command.Name, logger, conn).Start()
 			},
 		},
 	}
 
 	err = app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 }
